@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# backend/requirements.txt — FastAPI prediction service dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Web Framework ─────────────────────────────────────────────────────────────
+fastapi==0.111.0       # High-performance async web framework
+uvicorn[standard]==0.30.1  # ASGI server (with WebSocket support for live metrics)
+pydantic==2.7.3        # Request/response validation and serialization
+
+# ── ML Model Loading ──────────────────────────────────────────────────────────
+joblib==1.4.2          # Deserialize the trained .pkl model artifact
+numpy==1.26.4          # Feature vector construction for inference
+xgboost==2.0.3         # Required at runtime to unpickle XGBoost models
+prophet==1.1.5         # Required at runtime to unpickle Prophet models
+
+# ── AWS / S3 ──────────────────────────────────────────────────────────────────
+boto3==1.34.131        # Download model artifact from S3 at startup
+
+# ── HTTP & Utilities ──────────────────────────────────────────────────────────
+httpx==0.27.0          # Async HTTP client (used for health-check tests)
+python-dotenv==1.0.1   # Load .env in local development mode
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+prometheus-fastapi-instrumentator==7.0.0  # Auto-expose /metrics for Prometheus scraping
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.2.2
+pytest-asyncio==0.23.7   # Async test support for FastAPI endpoints

@@ -1,0 +1,19 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {"list": []},
+  "description": "Horizontal Pod Scaler — Predictive vs Reactive HPA Benchmark",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["kubernetes", "autoscaling", "hpa", "keda"],
+  "title": "HPA Scaler Benchmark",
+  "uid": "hpa-scaler-benchmark",
+  "version": 0,
+  "weekStart": ""
+}

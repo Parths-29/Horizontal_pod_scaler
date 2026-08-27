@@ -1,0 +1,41 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   index.css — Global design tokens and base styles
+   Will be significantly expanded in Phase 7 with the full dashboard design.
+──────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Color palette — dark mode, data-forward */
+  --color-bg:        #0f1117;
+  --color-surface:   #1a1d27;
+  --color-border:    #2a2d3e;
+  --color-accent:    #7c3aed;
+  --color-accent-2:  #06b6d4;
+  --color-text:      #e2e8f0;
+  --color-text-muted:#94a3b8;
+
+  /* Typography */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+#root {
+  height: 100%;
+}
+
+code, pre {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}

@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ml/requirements.txt — ML pipeline dependencies
+# Pin all versions for reproducibility (critical for academic projects)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Data & Feature Engineering ───────────────────────────────────────────────
+pandas==2.2.2          # DataFrame manipulation for time-series data
+numpy==1.26.4          # Numerical operations, rolling windows
+scikit-learn==1.5.0   # Preprocessing, metrics, train/test split
+
+# ── ML Models ────────────────────────────────────────────────────────────────
+prophet==1.1.5         # Facebook Prophet for time-series forecasting
+xgboost==2.0.3         # XGBoost gradient boosting (main model)
+joblib==1.4.2          # Model serialization (save/load .pkl files)
+
+# ── Evaluation & Logging ─────────────────────────────────────────────────────
+matplotlib==3.9.0      # Plotting forecast vs actual for results.md figures
+seaborn==0.13.2        # Statistical visualization
+
+# ── AWS / S3 ─────────────────────────────────────────────────────────────────
+boto3==1.34.131        # AWS SDK — used to upload model artifacts to S3
+
+# ── HTTP / Utilities ─────────────────────────────────────────────────────────
+requests==2.32.3       # HTTP client for downloading Zenodo dataset
+tqdm==4.66.4           # Progress bars for data download + training loops
+
+# ── Testing ──────────────────────────────────────────────────────────────────
+pytest==8.2.2          # Unit test runner

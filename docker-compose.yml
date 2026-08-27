@@ -1,0 +1,117 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Local development stack (non-K8s components only)
+#
+# This file lets you run the full data pipeline and dashboard locally
+# without needing a Kubernetes cluster. Use this for:
+#   - ML model training and iteration
+#   - Frontend/backend development
+#   - Prometheus/Grafana exploration
+#
+# Usage:
+#   cp .env.example .env    # fill in your AWS credentials
+#   docker-compose up --build
+#
+# Services exposed:
+#   Frontend:   http://localhost:5173
+#   Backend:    http://localhost:8000/docs  (Swagger UI)
+#   Prometheus: http://localhost:9090
+#   Grafana:    http://localhost:3000       (admin/admin)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ───────────────────────────────────────────────────────────────────────────
+  # backend — FastAPI service that:
+  #   - Loads the trained model from S3 (or local filesystem in dev mode)
+  #   - Exposes /predict, /api/metrics, /api/benchmark/results
+  #   - Serves as the data source for the React dashboard
+  # ───────────────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      # AWS credentials — populated from .env file (never hardcoded)
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+      - S3_BUCKET=${S3_BUCKET}
+      # Dev mode: skip S3 and load model from local artifacts directory
+      - DEV_MODE=${DEV_MODE:-false}
+      - MODEL_PATH=${MODEL_PATH:-/app/artifacts/model.pkl}
+    volumes:
+      # Mount local ML artifacts so you can iterate without re-uploading to S3
+      - ./ml/artifacts:/app/artifacts:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hpa-scaler
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # frontend — React + Vite dashboard
+  #   Proxies /api/* requests to the backend service defined above
+  # ───────────────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - hpa-scaler
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # prometheus — Scrapes the backend's /metrics endpoint locally
+  #   In production, kube-prometheus-stack is deployed via Helm inside EKS
+  # ───────────────────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus-local.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    networks:
+      - hpa-scaler
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # grafana — Visualization layer
+  #   Connects to Prometheus datasource automatically via provisioning
+  # ───────────────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.2
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      # Auto-provision the Prometheus datasource and our dashboard
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboard.json:/var/lib/grafana/dashboards/hpa-scaler.json:ro
+    depends_on:
+      - prometheus
+    networks:
+      - hpa-scaler
+
+volumes:
+  grafana-data:
+    driver: local
+
+networks:
+  hpa-scaler:
+    driver: bridge

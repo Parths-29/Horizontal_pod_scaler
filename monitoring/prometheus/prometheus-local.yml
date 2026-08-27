@@ -1,0 +1,20 @@
+# prometheus-local.yml — Prometheus config for docker-compose local dev
+# In production (EKS), kube-prometheus-stack Helm chart handles this via
+# ServiceMonitor CRDs and auto-discovery of pods with annotations.
+
+global:
+  scrape_interval: 15s      # How often to scrape targets
+  evaluation_interval: 15s  # How often to evaluate alerting rules
+
+scrape_configs:
+  # ── Prometheus self-monitoring ─────────────────────────────────────────────
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  # The backend uses prometheus-fastapi-instrumentator to expose /metrics
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:8000']
+    metrics_path: '/metrics'
