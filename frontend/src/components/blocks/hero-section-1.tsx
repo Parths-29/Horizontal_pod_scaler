@@ -32,50 +32,15 @@ export function HeroSection() {
     <>
       <HeroHeader />
       <main className="overflow-hidden">
-        {/* Decorative radial gradient blobs (desktop only) */}
-        <div
-          aria-hidden
-          className="z-[2] absolute inset-0 pointer-events-none isolate opacity-50 contain-strict hidden lg:block">
-          <div className="w-[35rem] h-[80rem] -translate-y-[350px] absolute left-0 top-0 -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(0,0%,85%,.08)_0,hsla(0,0%,55%,.02)_50%,hsla(0,0%,45%,0)_80%)]" />
-          <div className="h-[80rem] absolute left-0 top-0 w-56 -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.06)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)] [translate:5%_-50%]" />
-          <div className="h-[80rem] -translate-y-[350px] absolute left-0 top-0 w-56 -rotate-45 bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.04)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)]" />
-        </div>
+        {/* Decorative elements removed for monochrome theme */}
 
         {/* ── Hero section ──────────────────────────────────────────────────── */}
         <section>
           <div className="relative pt-24 md:pt-36">
-            {/* Background image (dark mode only) */}
-            <AnimatedGroup
-              variants={{
-                container: {
-                  visible: {
-                    transition: { delayChildren: 1 },
-                  },
-                },
-                item: {
-                  hidden: { opacity: 0, y: 20 },
-                  visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { type: 'spring', bounce: 0.3, duration: 2 },
-                  },
-                },
-              }}
-              className="absolute inset-0 -z-20">
-              <img
-                src="https://ik.imagekit.io/lrigu76hy/tailark/night-background.jpg?updatedAt=1745733451120"
-                alt="background"
-                className="absolute inset-x-0 top-56 -z-20 lg:top-32 w-full object-cover opacity-60"
-                width="3276"
-                height="4095"
-              />
-            </AnimatedGroup>
-
-            {/* Radial vignette overlay */}
-            <div
-              aria-hidden
-              className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,hsl(var(--background))_75%)]"
-            />
+            {/* Subtle background noise/grid (monochrome) */}
+            <div className="absolute inset-0 -z-20 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]">
+              <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-white opacity-[0.05] blur-[100px]"></div>
+            </div>
 
             {/* Headline + CTA */}
             <div className="mx-auto max-w-7xl px-6">
@@ -102,7 +67,7 @@ export function HeroSection() {
                   {/* Main headline */}
                   <h1 className="mt-8 max-w-4xl mx-auto text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[5.25rem] font-bold tracking-tight">
                     Stop Reacting.<br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-400">
+                    <span className="text-foreground">
                       Start Predicting.
                     </span>
                   </h1>
@@ -159,7 +124,7 @@ export function HeroSection() {
                   aria-hidden
                   className="bg-gradient-to-b to-background absolute inset-0 z-10 from-transparent from-35%"
                 />
-                <div className="ring-background dark:inset-shadow-white/20 bg-background/50 relative mx-auto max-w-6xl overflow-hidden rounded-2xl border p-4 shadow-lg shadow-zinc-950/15 ring-1 backdrop-blur-sm">
+                <div className="bg-black/40 backdrop-blur-xl relative mx-auto max-w-6xl overflow-hidden rounded-2xl border border-white/10 p-4 shadow-2xl shadow-white/5 ring-1 ring-white/5">
                   {/* Grafana-style dashboard mockup */}
                   <DashboardPreview />
                 </div>
@@ -431,14 +396,14 @@ const HeroHeader = () => {
 
 const ProjectLogo = ({ className }: { className?: string }) => (
   <div className={cn('flex items-center gap-2', className)}>
-    <div className="size-7 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center">
-      <svg viewBox="0 0 24 24" fill="none" className="size-4 text-white" stroke="currentColor" strokeWidth={2.5}>
+    <div className="size-7 rounded-lg bg-white flex items-center justify-center">
+      <svg viewBox="0 0 24 24" fill="none" className="size-4 text-black" stroke="currentColor" strokeWidth={2.5}>
         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
       </svg>
     </div>
     <span className="font-bold text-sm tracking-tight">
-      <span className="text-violet-400">Predictive</span>
-      <span className="text-foreground">HPA</span>
+      <span className="text-foreground">Predictive</span>
+      <span className="text-muted-foreground font-medium">HPA</span>
     </span>
   </div>
 )

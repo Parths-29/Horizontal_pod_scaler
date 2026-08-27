@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-external-scaler
+  labels:
+    app: keda-external-scaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-external-scaler
+  template:
+    metadata:
+      labels:
+        app: keda-external-scaler
+    spec:
+      containers:
+      - name: scaler
+        # This will be replaced by the ECR image URI via CI/CD
+        image: scaler:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 50051
+        env:
+        - name: GRPC_PORT
+          value: "50051"
+        - name: BACKEND_URL
+          value: "http://ml-backend-service.default.svc.cluster.local:8000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-external-scaler-service
+spec:
+  selector:
+    app: keda-external-scaler
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
+  type: ClusterIP

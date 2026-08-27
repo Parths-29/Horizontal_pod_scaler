@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: demo-app-scaledobject
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: demo-app
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  # Cooldown period before scaling down
+  cooldownPeriod: 60
+  # Polling interval for checking metrics
+  pollingInterval: 15
+  triggers:
+    - type: external
+      metadata:
+        scalerAddress: keda-external-scaler-service.default.svc.cluster.local:50051
+        targetCpuUtil: "70.0"
