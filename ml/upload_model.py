@@ -101,10 +101,14 @@ def main():
     parser = argparse.ArgumentParser(description="Upload model artifact to S3")
     parser.add_argument("--model-path", type=Path, default=DEFAULT_MODEL_PATH)
     parser.add_argument("--meta-path", type=Path, default=DEFAULT_META_PATH)
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    default_model_key = os.environ.get("S3_MODEL_KEY", f"models/model_v1_{timestamp}.pkl")
+    
     parser.add_argument(
         "--s3-model-key",
-        default=os.environ.get("S3_MODEL_KEY", "models/model.pkl"),
-        help="S3 object key for the model (default: models/model.pkl)",
+        default=default_model_key,
+        help="S3 object key for the model (defaults to timestamped key)",
     )
     parser.add_argument(
         "--s3-meta-key",

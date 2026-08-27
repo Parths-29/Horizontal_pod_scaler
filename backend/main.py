@@ -75,17 +75,28 @@ _feature_cols: List[str] = []
 
 def _load_model_from_s3() -> object:
     """
-    Download model.pkl from S3 into memory and deserialise.
-    Uses boto3 credential chain (IRSA → env → profile).
+    Download latest model from S3 into memory and deserialise.
+    First downloads metadata.json to find the latest versioned model key.
     """
     import boto3
 
     bucket = os.environ["S3_BUCKET"]
-    key = os.environ.get("S3_MODEL_KEY", "models/model.pkl")
     region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
-
-    logger.info(f"Loading model from s3://{bucket}/{key}")
     s3 = boto3.client("s3", region_name=region)
+
+    meta_key = "models/metadata.json"
+    try:
+        logger.info(f"Fetching metadata from s3://{bucket}/{meta_key} to find latest model...")
+        meta_buf = io.BytesIO()
+        s3.download_fileobj(bucket, meta_key, meta_buf)
+        meta_buf.seek(0)
+        s3_meta = json.load(meta_buf)
+        key = s3_meta.get("s3_key", "models/model.pkl")
+    except Exception as exc:
+        logger.warning(f"Failed to fetch metadata.json from S3 ({exc}), falling back to default key")
+        key = os.environ.get("S3_MODEL_KEY", "models/model.pkl")
+
+    logger.info(f"Downloading latest model from s3://{bucket}/{key}")
     buf = io.BytesIO()
     s3.download_fileobj(bucket, key, buf)
     buf.seek(0)

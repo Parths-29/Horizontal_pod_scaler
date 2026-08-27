@@ -6,11 +6,13 @@ metadata:
 spec:
   scaleTargetRef:
     name: demo-app
+  # Match HPA bounds exactly (1-20) to ensure fair, apples-to-apples benchmarking
   minReplicaCount: 1
   maxReplicaCount: 20
-  # Cooldown period before scaling down
+  # KEDA cooldown stabilization (seconds). We use 60s to prevent rapid scaling oscillation (thrashing)
+  # when the ML model predicts short, sudden dips followed by spikes.
   cooldownPeriod: 60
-  # Polling interval for checking metrics
+  # Polling interval for checking metrics from the gRPC scaler
   pollingInterval: 15
   triggers:
     - type: external

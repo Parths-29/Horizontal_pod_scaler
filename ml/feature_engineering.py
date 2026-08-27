@@ -165,8 +165,10 @@ def temporal_split(
     test = df.iloc[val_end:]
 
     print(
-        f"[feature_engineering] Split → "
-        f"train={len(train):,}  val={len(val):,}  test={len(test):,}"
+        f"[feature_engineering] Split Date Ranges:\n"
+        f"  Train: {train.index.min()} → {train.index.max()} ({len(train):,} rows)\n"
+        f"  Val:   {val.index.min()} → {val.index.max()} ({len(val):,} rows)\n"
+        f"  Test:  {test.index.min()} → {test.index.max()} ({len(test):,} rows)"
     )
     return train, val, test
 

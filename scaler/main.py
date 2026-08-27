@@ -19,6 +19,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
 class ExternalScaler(pb_grpc.ExternalScalerServicer):
     def __init__(self, backend_url: str):
         self.backend_url = backend_url
+        self.last_good_prediction = 0.0
 
     def _get_forecast(self, metric_name: str) -> float:
         """Fetch the predicted load from the FastAPI backend."""
@@ -29,16 +30,20 @@ class ExternalScaler(pb_grpc.ExternalScalerServicer):
             data = response.json()
             predictions = data.get("predictions", [])
             if not predictions:
-                logging.warning("No predictions returned from backend.")
-                return 0.0
+                logging.warning(f"No predictions returned from backend. Falling back to {self.last_good_prediction}")
+                return self.last_good_prediction
             
             # The forecast returns a list of future steps. We want the peak load
             # over the next 5 minutes to scale proactively.
             peak_cpu = max([p["cpu_util"] for p in predictions])
-            return float(peak_cpu)
+            self.last_good_prediction = float(peak_cpu)
+            return self.last_good_prediction
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Backend API failed (Timeout/500): {e}. Fallback: {self.last_good_prediction}")
+            return self.last_good_prediction
         except Exception as e:
-            logging.error(f"Failed to fetch forecast from backend: {e}")
-            return 0.0
+            logging.error(f"Unexpected error parsing forecast: {e}. Fallback: {self.last_good_prediction}")
+            return self.last_good_prediction
 
     def IsActive(self, request, context):
         """Returns True if scaling is needed."""
