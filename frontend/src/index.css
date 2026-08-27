@@ -1,41 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ─────────────────────────────────────────────────────────────────────────────
-   index.css — Global design tokens and base styles
-   Will be significantly expanded in Phase 7 with the full dashboard design.
-──────────────────────────────────────────────────────────────────────────── */
+   shadcn/ui CSS variables — dark mode first (this project defaults to dark)
+   These map to Tailwind's extended color palette in tailwind.config.js
+────────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 213 31% 91%;
 
-:root {
-  /* Color palette — dark mode, data-forward */
-  --color-bg:        #0f1117;
-  --color-surface:   #1a1d27;
-  --color-border:    #2a2d3e;
-  --color-accent:    #7c3aed;
-  --color-accent-2:  #06b6d4;
-  --color-text:      #e2e8f0;
-  --color-text-muted:#94a3b8;
+    --card: 222 47% 13%;
+    --card-foreground: 213 31% 91%;
 
-  /* Typography */
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--color-text);
-  background-color: var(--color-bg);
+    --popover: 222 47% 11%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 263 80% 58%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 222 47% 18%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 47% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 223 47% 18%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 47% 22%;
+    --input: 222 47% 22%;
+    --ring: 263 80% 58%;
+
+    --radius: 0.75rem;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 263 80% 50%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 263 80% 50%;
+  }
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  min-height: 100vh;
-  background-color: var(--color-bg);
-}
-
-#root {
-  height: 100%;
-}
-
-code, pre {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
 }
