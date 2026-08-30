@@ -1,6 +1,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # backend/Dockerfile — multi-stage build for the FastAPI prediction server
 # ─────────────────────────────────────────────────────────────────────────────
+# Build arg for CI/CD image tagging (set by Jenkins: --build-arg IMAGE_TAG=$GIT_COMMIT)
+ARG IMAGE_TAG=latest
+
 # Stage 1: install dependencies (cached layer; rebuilds only if requirements change)
 # Stage 2: copy source code into a minimal runtime image
 
@@ -45,5 +48,9 @@ EXPOSE 8000
 # Health check — Kubernetes liveness probe targets /health
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+# Label for CI/CD build traceability
+ARG IMAGE_TAG
+LABEL version="${IMAGE_TAG}" project="horizontal-pod-scaler" service="backend"
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

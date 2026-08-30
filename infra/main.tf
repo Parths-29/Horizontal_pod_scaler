@@ -38,3 +38,18 @@ module "s3" {
 
   bucket_name = "${var.cluster_name}-ml-models"
 }
+
+# ── Jenkins CI/CD Server ──────────────────────────────────────────────────────
+# Provisions an EC2 instance running Jenkins with Docker, kubectl, and AWS CLI.
+# IAM role is least-privilege: ECR push to project repos, EKS describe, S3 read.
+module "jenkins" {
+  source = "./modules/jenkins"
+
+  cluster_name  = var.cluster_name
+  vpc_id        = module.vpc.vpc_id
+  subnet_id     = module.vpc.public_subnets[0]
+  allowed_cidr  = var.jenkins_allowed_cidr
+  s3_bucket_arn = module.s3.bucket_arn
+  instance_type = "t3.medium"
+  key_pair_name = var.jenkins_key_pair_name
+}

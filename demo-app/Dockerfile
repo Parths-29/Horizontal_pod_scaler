@@ -1,4 +1,6 @@
 # Use an official lightweight Python image
+# Build arg for CI/CD image tagging (set by Jenkins: --build-arg IMAGE_TAG=$GIT_COMMIT)
+ARG IMAGE_TAG=latest
 FROM python:3.9-slim-buster AS build
 
 WORKDIR /app
@@ -28,6 +30,10 @@ COPY app.py .
 USER appuser
 
 EXPOSE 5000
+
+# Label for CI/CD build traceability
+ARG IMAGE_TAG
+LABEL version="${IMAGE_TAG}" project="horizontal-pod-scaler" service="demo-app"
 
 # We use gunicorn with threads for production-like load handling
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "8", "app:app"]

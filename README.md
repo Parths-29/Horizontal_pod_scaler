@@ -113,13 +113,34 @@ terraform plan
 terraform apply   # Review the plan carefully before confirming
 ```
 
-### Step 3 — Push images via Jenkins pipeline
+### Step 3 — CI/CD with Jenkins
+
+The project includes a `Jenkinsfile` with a 6-stage pipeline:
+
+1. **Checkout** → pulls the repo
+2. **Setup** → verifies Docker, AWS CLI, kubectl
+3. **Lint & Test** → runs `flake8`, `black --check`, `pytest`
+4. **Build Images** → parallel Docker builds for `backend`, `scaler`, `demo-app` (tagged with `GIT_COMMIT`)
+5. **Push to ECR** → authenticates and pushes to `horizontal-pod-scaler/*` repos
+6. **Deploy to EKS** → `kubectl set image` + `kubectl rollout status`
 
 ```bash
-# Configure Jenkins credentials (see docs/setup.md)
-# Push to main branch — webhook triggers the pipeline automatically
-git push origin main
+# Provision the Jenkins EC2 server (t3.medium with least-privilege IAM)
+cd infra && terraform apply
+
+# Note the Jenkins URL from outputs
+terraform output jenkins_url
+
+# Configure Jenkins credentials (AWS_REGION, AWS_ACCOUNT_ID, EKS_CLUSTER_NAME)
+# Then create a Pipeline job pointing at the Jenkinsfile
 ```
+
+> **Cost control:** Stop the Jenkins EC2 when not in use:
+> ```bash
+> aws ec2 stop-instances --instance-ids $(terraform output -raw jenkins_instance_id)
+> ```
+>
+> Full CI/CD guide: [`docs/ci_cd.md`](docs/ci_cd.md)
 
 ### Step 4 — Access the dashboard
 
@@ -132,6 +153,7 @@ npm run dev --prefix frontend
 ```
 
 > Full deployment guide: [`docs/setup.md`](docs/setup.md)
+
 
 ---
 

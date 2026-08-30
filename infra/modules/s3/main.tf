@@ -24,3 +24,7 @@ resource "aws_s3_bucket_versioning" "ml_models" {
 output "bucket_name" {
   value = aws_s3_bucket.ml_models.id
 }
+
+output "bucket_arn" {
+  value = aws_s3_bucket.ml_models.arn
+}
