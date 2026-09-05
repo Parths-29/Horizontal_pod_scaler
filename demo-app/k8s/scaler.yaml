@@ -17,7 +17,7 @@ spec:
       containers:
       - name: scaler
         # This will be replaced by the ECR image URI via CI/CD
-        image: scaler:latest
+        image: 669294687575.dkr.ecr.us-west-2.amazonaws.com/keda-scaler:initial
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 50051

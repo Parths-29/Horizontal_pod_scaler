@@ -6,7 +6,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ml-backend
+  name: ml-backend-service
   labels:
     app: ml-backend
 spec:
@@ -20,8 +20,8 @@ spec:
         app: ml-backend
     spec:
       containers:
-        - name: ml-backend
-          image: ACCOUNT_ID.dkr.ecr.us-west-2.amazonaws.com/ml-backend:initial
+        - name: ml-backend-service
+          image: 669294687575.dkr.ecr.us-west-2.amazonaws.com/ml-backend:initial
           ports:
             - containerPort: 8000
           env:
@@ -54,7 +54,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ml-backend
+  name: ml-backend-service
   labels:
     app: ml-backend
 spec:

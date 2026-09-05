@@ -17,7 +17,7 @@ spec:
       containers:
       - name: demo-app
         # This will be replaced by the ECR image URI via CI/CD
-        image: demo-app:latest
+        image: 669294687575.dkr.ecr.us-west-2.amazonaws.com/demo-app:initial
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000

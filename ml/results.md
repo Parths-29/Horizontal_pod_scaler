@@ -16,7 +16,7 @@
 | Model | Val MAE | Val RMSE | Val SMAPE | Test MAE | Test RMSE | Test SMAPE |
 |-------|---------|----------|-----------|----------|-----------|-----------|
 | Prophet | 0 | 0 | 0% | 0 | 0 | 0% |
-| XGBoost | 3.36 | 4.4848 | 13.75% | 3.3288 | 4.4391 | 12.72% |
+| XGBoost | 3.3556 | 4.4804 | 13.74% | 3.3251 | 4.4348 | 12.7% |
 
 > **Why SMAPE?** Traditional MAPE divides by |actual|, which produces nonsensical
 > values (millions of %) when CPU utilisation is near 0%. SMAPE divides by the
@@ -28,11 +28,11 @@
 ### Feature Importance (XGBoost top 5)
 | Feature | Importance |
 |---------|------------|
-| rolling_mean_15 | 0.8744 |
-| rolling_mean_30 | 0.0993 |
-| rolling_mean_5 | 0.0070 |
-| hour_sin | 0.0033 |
-| hour | 0.0026 |
+| rolling_mean_15 | 0.8338 |
+| rolling_mean_30 | 0.1122 |
+| rolling_mean_5 | 0.0316 |
+| is_weekend | 0.0031 |
+| hour_sin | 0.0031 |
 
 ## Key Observations
 
