@@ -232,7 +232,7 @@ RESULTS_TEMPLATE = """# ML Model Evaluation Results
 
 | Property | Value |
 |----------|-------|
-| Source | Alibaba 2018 cluster trace (CPU utilisation %) |
+| Source | {data_source} |
 | Rows | {total_rows:,} |
 | Split | 70% train / 15% val / 15% test |
 | Frequency | 1-minute intervals |
@@ -273,6 +273,7 @@ RESULTS_TEMPLATE = """# ML Model Evaluation Results
 
 def write_results_md(
     total_rows: int,
+    data_source: str,
     prophet_val: Dict, prophet_test: Dict,
     xgb_val: Dict, xgb_test: Dict,
     winner: str,
@@ -280,6 +281,7 @@ def write_results_md(
 ) -> None:
     content = RESULTS_TEMPLATE.format(
         total_rows=total_rows,
+        data_source=data_source,
         p_val_mae=prophet_val["MAE"],    p_val_rmse=prophet_val["RMSE"],   p_val_smape=prophet_val["SMAPE"],
         p_test_mae=prophet_test["MAE"],  p_test_rmse=prophet_test["RMSE"], p_test_smape=prophet_test["SMAPE"],
         x_val_mae=xgb_val["MAE"],        x_val_rmse=xgb_val["RMSE"],       x_val_smape=xgb_val["SMAPE"],
@@ -297,6 +299,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train Prophet and XGBoost forecasters")
     parser.add_argument("--data-path", type=Path, default=SCRIPT_DIR / "data" / "raw_trace.csv")
     parser.add_argument("--skip-prophet", action="store_true", help="Skip Prophet (faster dev iteration)")
+    parser.add_argument("--is-synthetic", action="store_true", help="Indicate if the data is synthetic for the results report")
     args = parser.parse_args()
 
     # ── Load & engineer features ──────────────────────────────────────────────
@@ -333,8 +336,8 @@ def main():
     else:
         print("[train] Skipping Prophet (--skip-prophet flag set)")
         prophet_model = None
-        prophet_val_metrics = {"MAE": 0, "RMSE": 0, "SMAPE": 0}
-        prophet_test_metrics = {"MAE": 0, "RMSE": 0, "SMAPE": 0}
+        prophet_val_metrics = {"MAE": "Skipped", "RMSE": "Skipped", "SMAPE": "Skipped"}
+        prophet_test_metrics = {"MAE": "Skipped", "RMSE": "Skipped", "SMAPE": "Skipped"}
 
     # ── Model selection ───────────────────────────────────────────────────────
     # Choose best model by validation RMSE (lower is better)
@@ -355,8 +358,11 @@ def main():
     save_artifact(winner_model, winner_name, winner_val, winner_test)
 
     # ── Write results.md ─────────────────────────────────────────────────────
+    data_source = "Synthetic generation (fallback)" if args.is_synthetic else "Alibaba 2018 cluster trace (CPU utilisation %)"
+
     write_results_md(
         total_rows=total_rows,
+        data_source=data_source,
         prophet_val=prophet_val_metrics,
         prophet_test=prophet_test_metrics,
         xgb_val=xgb_val_metrics,
