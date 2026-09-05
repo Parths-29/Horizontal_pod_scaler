@@ -8,7 +8,7 @@ Trains two forecasting models on the CPU utilisation trace:
 Evaluation metrics (all computed on held-out TEST set):
   • MAE   — Mean Absolute Error  (interpretable: "off by X CPU%")
   • RMSE  — Root Mean Squared Error  (penalises large spikes more than MAE)
-  • MAPE  — Mean Absolute Percentage Error  (scale-independent %)
+  • SMAPE — Symmetric Mean Absolute Percentage Error  (bounded 0–200%, stable near zero)
 
 Interview talking point:
   We train two different model families on purpose:
@@ -39,6 +39,7 @@ from typing import Any, Dict, Tuple
 import joblib
 import numpy as np
 import pandas as pd
+import gc
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 warnings.filterwarnings("ignore")  # suppress Prophet's Stan output
@@ -51,12 +52,24 @@ RESULTS_PATH = SCRIPT_DIR / "results.md"
 # ─── Metrics ──────────────────────────────────────────────────────────────────
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
-    """Compute MAE, RMSE, and MAPE. Returns a dict with float values."""
-    mae = mean_absolute_error(y_true, y_pred)
+    """
+    Compute MAE, RMSE, and SMAPE. Returns a dict with native Python floats.
+
+    Why SMAPE instead of MAPE?
+      MAPE divides by |actual|, which explodes when CPU utilisation is near 0%.
+      SMAPE divides by (|actual| + |predicted|) / 2, so it stays bounded [0, 200%]
+      even when actuals are very small. This is standard in time-series forecasting
+      competitions (e.g. M-competitions).
+    """
+    mae = float(mean_absolute_error(y_true, y_pred))
     rmse = float(np.sqrt(mean_squared_error(y_true, y_pred)))
-    # MAPE: avoid division by zero (clip denominator)
-    mape = float(np.mean(np.abs((y_true - y_pred) / np.clip(np.abs(y_true), 1e-6, None))) * 100)
-    return {"MAE": round(mae, 4), "RMSE": round(rmse, 4), "MAPE": round(mape, 4)}
+    # SMAPE: symmetric, bounded 0–200%, stable near zero
+    denominator = (np.abs(y_true) + np.abs(y_pred)) / 2.0
+    # Avoid 0/0: where both actual and predicted are 0, error is 0
+    smape = float(np.mean(
+        np.where(denominator == 0, 0.0, np.abs(y_true - y_pred) / denominator)
+    ) * 100)
+    return {"MAE": round(mae, 4), "RMSE": round(rmse, 4), "SMAPE": round(smape, 2)}
 
 
 # ─── Prophet ──────────────────────────────────────────────────────────────────
@@ -104,8 +117,8 @@ def train_prophet(
     val_metrics = compute_metrics(y_val.values, prophet_predict(X_val))
     test_metrics = compute_metrics(y_test.values, prophet_predict(X_test))
 
-    print(f"[train] Prophet  val  → MAE={val_metrics['MAE']}  RMSE={val_metrics['RMSE']}  MAPE={val_metrics['MAPE']}%")
-    print(f"[train] Prophet  test → MAE={test_metrics['MAE']}  RMSE={test_metrics['RMSE']}  MAPE={test_metrics['MAPE']}%")
+    print(f"[train] Prophet  val  → MAE={val_metrics['MAE']}  RMSE={val_metrics['RMSE']}  SMAPE={val_metrics['SMAPE']}%")
+    print(f"[train] Prophet  test → MAE={test_metrics['MAE']}  RMSE={test_metrics['RMSE']}  SMAPE={test_metrics['SMAPE']}%")
 
     return model, val_metrics, test_metrics
 
@@ -165,8 +178,8 @@ def train_xgboost(
     val_metrics = compute_metrics(y_val.values, val_pred)
     test_metrics = compute_metrics(y_test.values, test_pred)
 
-    print(f"[train] XGBoost  val  → MAE={val_metrics['MAE']}  RMSE={val_metrics['RMSE']}  MAPE={val_metrics['MAPE']}%")
-    print(f"[train] XGBoost  test → MAE={test_metrics['MAE']}  RMSE={test_metrics['RMSE']}  MAPE={test_metrics['MAPE']}%")
+    print(f"[train] XGBoost  val  → MAE={val_metrics['MAE']}  RMSE={val_metrics['RMSE']}  SMAPE={val_metrics['SMAPE']}%")
+    print(f"[train] XGBoost  test → MAE={test_metrics['MAE']}  RMSE={test_metrics['RMSE']}  SMAPE={test_metrics['SMAPE']}%")
 
     return model, val_metrics, test_metrics
 
@@ -226,10 +239,15 @@ RESULTS_TEMPLATE = """# ML Model Evaluation Results
 
 ## Model Comparison
 
-| Model | Val MAE | Val RMSE | Val MAPE | Test MAE | Test RMSE | Test MAPE |
-|-------|---------|----------|----------|----------|-----------|-----------|
-| Prophet | {p_val_mae} | {p_val_rmse} | {p_val_mape}% | {p_test_mae} | {p_test_rmse} | {p_test_mape}% |
-| XGBoost | {x_val_mae} | {x_val_rmse} | {x_val_mape}% | {x_test_mae} | {x_test_rmse} | {x_test_mape}% |
+| Model | Val MAE | Val RMSE | Val SMAPE | Test MAE | Test RMSE | Test SMAPE |
+|-------|---------|----------|-----------|----------|-----------|-----------|
+| Prophet | {p_val_mae} | {p_val_rmse} | {p_val_smape}% | {p_test_mae} | {p_test_rmse} | {p_test_smape}% |
+| XGBoost | {x_val_mae} | {x_val_rmse} | {x_val_smape}% | {x_test_mae} | {x_test_rmse} | {x_test_smape}% |
+
+> **Why SMAPE?** Traditional MAPE divides by |actual|, which produces nonsensical
+> values (millions of %) when CPU utilisation is near 0%. SMAPE divides by the
+> average of |actual| + |predicted|, keeping the metric bounded [0–200%] and
+> numerically stable — standard practice in time-series forecasting (M-competitions).
 
 ## Winner: **{winner}** (lower val RMSE)
 
@@ -262,10 +280,10 @@ def write_results_md(
 ) -> None:
     content = RESULTS_TEMPLATE.format(
         total_rows=total_rows,
-        p_val_mae=prophet_val["MAE"],    p_val_rmse=prophet_val["RMSE"],   p_val_mape=prophet_val["MAPE"],
-        p_test_mae=prophet_test["MAE"],  p_test_rmse=prophet_test["RMSE"], p_test_mape=prophet_test["MAPE"],
-        x_val_mae=xgb_val["MAE"],        x_val_rmse=xgb_val["RMSE"],       x_val_mape=xgb_val["MAPE"],
-        x_test_mae=xgb_test["MAE"],      x_test_rmse=xgb_test["RMSE"],     x_test_mape=xgb_test["MAPE"],
+        p_val_mae=prophet_val["MAE"],    p_val_rmse=prophet_val["RMSE"],   p_val_smape=prophet_val["SMAPE"],
+        p_test_mae=prophet_test["MAE"],  p_test_rmse=prophet_test["RMSE"], p_test_smape=prophet_test["SMAPE"],
+        x_val_mae=xgb_val["MAE"],        x_val_rmse=xgb_val["RMSE"],       x_val_smape=xgb_val["SMAPE"],
+        x_test_mae=xgb_test["MAE"],      x_test_rmse=xgb_test["RMSE"],     x_test_smape=xgb_test["SMAPE"],
         winner=winner,
         feature_importance=feature_importance_md,
     )
@@ -289,6 +307,9 @@ def main():
     X_train, X_val, X_test, y_train, y_val, y_test, prophet_df = get_train_val_test(args.data_path)
     total_rows = len(X_train) + len(X_val) + len(X_test)
 
+    # Force garbage collection to free up memory from intermediate pandas copies
+    gc.collect()
+
     # ── Train XGBoost ─────────────────────────────────────────────────────────
     xgb_model, xgb_val_metrics, xgb_test_metrics = train_xgboost(
         X_train, y_train, X_val, y_val, X_test, y_test
@@ -306,11 +327,14 @@ def main():
         prophet_model, prophet_val_metrics, prophet_test_metrics = train_prophet(
             prophet_df, X_val, y_val, X_test, y_test
         )
+        # Free memory used by Prophet dataframe
+        del prophet_df
+        gc.collect()
     else:
         print("[train] Skipping Prophet (--skip-prophet flag set)")
         prophet_model = None
-        prophet_val_metrics = {"MAE": 0, "RMSE": 0, "MAPE": 0}
-        prophet_test_metrics = {"MAE": 0, "RMSE": 0, "MAPE": 0}
+        prophet_val_metrics = {"MAE": 0, "RMSE": 0, "SMAPE": 0}
+        prophet_test_metrics = {"MAE": 0, "RMSE": 0, "SMAPE": 0}
 
     # ── Model selection ───────────────────────────────────────────────────────
     # Choose best model by validation RMSE (lower is better)

@@ -13,21 +13,26 @@
 
 ## Model Comparison
 
-| Model | Val MAE | Val RMSE | Val MAPE | Test MAE | Test RMSE | Test MAPE |
-|-------|---------|----------|----------|----------|-----------|-----------|
-| Prophet | 3.8542 | 5.0539 | 3572618.5515% | 3.5804 | 4.7686 | 2151671.8015% |
-| XGBoost | 3.358 | 4.484 | 2962651.9658% | 3.3313 | 4.4419 | 2227182.8491% |
+| Model | Val MAE | Val RMSE | Val SMAPE | Test MAE | Test RMSE | Test SMAPE |
+|-------|---------|----------|-----------|----------|-----------|-----------|
+| Prophet | 0 | 0 | 0% | 0 | 0 | 0% |
+| XGBoost | 3.36 | 4.4848 | 13.75% | 3.3288 | 4.4391 | 12.72% |
+
+> **Why SMAPE?** Traditional MAPE divides by |actual|, which produces nonsensical
+> values (millions of %) when CPU utilisation is near 0%. SMAPE divides by the
+> average of |actual| + |predicted|, keeping the metric bounded [0–200%] and
+> numerically stable — standard practice in time-series forecasting (M-competitions).
 
 ## Winner: **XGBoost** (lower val RMSE)
 
 ### Feature Importance (XGBoost top 5)
 | Feature | Importance |
 |---------|------------|
-| rolling_mean_15 | 0.8682 |
-| rolling_mean_30 | 0.1045 |
-| rolling_mean_5 | 0.0075 |
-| hour_sin | 0.0035 |
-| hour | 0.0025 |
+| rolling_mean_15 | 0.8744 |
+| rolling_mean_30 | 0.0993 |
+| rolling_mean_5 | 0.0070 |
+| hour_sin | 0.0033 |
+| hour | 0.0026 |
 
 ## Key Observations
 

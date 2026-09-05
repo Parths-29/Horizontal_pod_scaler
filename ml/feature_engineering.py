@@ -48,7 +48,8 @@ def load_and_parse(path: Path = RAW_DATA_PATH) -> pd.DataFrame:
     The output has a DatetimeIndex and a single numeric column 'cpu_util'.
     """
     print(f"[feature_engineering] Loading: {path}")
-    df = pd.read_csv(path, parse_dates=["timestamp"])
+    # Specify dtype as float32 to save RAM immediately upon load
+    df = pd.read_csv(path, parse_dates=["timestamp"], dtype={"cpu_util": "float32"})
     df = df.sort_values("timestamp").reset_index(drop=True)
     df = df.set_index("timestamp")
 
@@ -57,8 +58,9 @@ def load_and_parse(path: Path = RAW_DATA_PATH) -> pd.DataFrame:
 
     # Forward-fill short gaps (up to 5 consecutive minutes)
     df = df.resample("min").mean()
-    df[TARGET_COL] = df[TARGET_COL].fillna(method="ffill", limit=5)
+    df[TARGET_COL] = df[TARGET_COL].ffill(limit=5)
     df = df.dropna(subset=[TARGET_COL])
+    df[TARGET_COL] = df[TARGET_COL].astype(np.float32)
 
     print(f"[feature_engineering] Loaded {len(df):,} rows  "
           f"({df.index.min()} → {df.index.max()})")
@@ -77,7 +79,6 @@ def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
       hour_sin/cos  — circular encoding of hour (avoids 0 vs 23 discontinuity)
       dow_sin/cos   — circular encoding of day-of-week
     """
-    df = df.copy()
     idx = df.index
 
     df["hour"] = idx.hour.astype(np.int8)
@@ -86,10 +87,11 @@ def add_calendar_features(df: pd.DataFrame) -> pd.DataFrame:
     df["is_weekend"] = (idx.dayofweek >= 5).astype(np.int8)
 
     # Circular (sin/cos) encoding prevents models treating hour 23 as far from 0
-    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
-    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
-    df["dow_sin"] = np.sin(2 * np.pi * df["day_of_week"] / 7)
-    df["dow_cos"] = np.cos(2 * np.pi * df["day_of_week"] / 7)
+    # Cast these to float32 to save memory
+    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24).astype(np.float32)
+    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24).astype(np.float32)
+    df["dow_sin"] = np.sin(2 * np.pi * df["day_of_week"] / 7).astype(np.float32)
+    df["dow_cos"] = np.cos(2 * np.pi * df["day_of_week"] / 7).astype(np.float32)
 
     return df
 
@@ -103,9 +105,8 @@ def add_lag_features(df: pd.DataFrame, lags: list[int] = [1, 5, 15]) -> pd.DataF
       - 5 min ago  → short-term pattern
       - 15 min ago → medium-term trend
     """
-    df = df.copy()
     for lag in lags:
-        df[f"lag_{lag}"] = df[TARGET_COL].shift(lag)
+        df[f"lag_{lag}"] = df[TARGET_COL].shift(lag).astype(np.float32)
     return df
 
 
@@ -121,13 +122,12 @@ def add_rolling_features(
       15 → medium-term trend
       30 → long-term baseline
     """
-    df = df.copy()
     for w in windows:
         df[f"rolling_mean_{w}"] = (
-            df[TARGET_COL].shift(1).rolling(window=w, min_periods=1).mean()
+            df[TARGET_COL].shift(1).rolling(window=w, min_periods=1).mean().astype(np.float32)
         )
         df[f"rolling_std_{w}"] = (
-            df[TARGET_COL].shift(1).rolling(window=w, min_periods=1).std().fillna(0)
+            df[TARGET_COL].shift(1).rolling(window=w, min_periods=1).std().fillna(0).astype(np.float32)
         )
     return df
 
