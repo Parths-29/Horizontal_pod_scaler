@@ -92,4 +92,10 @@ run_test_suite "keda" "gradual_ramp" 420
 run_test_suite "keda" "sudden_spike" 185
 run_test_suite "keda" "daily_cycle" 600
 
+# 3. Restore Final Known-Good State
+echo "[benchmark] Benchmark complete! Restoring both autoscalers to initial state..."
+kubectl apply -f ../demo-app/k8s/baseline-hpa.yaml
+kubectl apply -f ../demo-app/k8s/keda-scaledobject.yaml
+echo "[benchmark] Cluster state restored."
+
 echo "[benchmark] Tests complete! Results saved to $RESULTS_DIR/"
