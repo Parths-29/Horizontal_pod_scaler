@@ -5,7 +5,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 import json
-import pandas as pd
+import csv
 from pathlib import Path
 
 RESULTS_DIR = Path("results")
@@ -68,11 +68,17 @@ def parse_k6_json(filepath: Path):
 def analyze_replicas(filepath: Path):
     if not filepath.exists():
         return None
-    df = pd.read_csv(filepath)
-    if len(df) == 0:
+    replicas = []
+    with open(filepath, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            val = row.get("replicas")
+            if val is not None and val.strip().isdigit():
+                replicas.append(int(val.strip()))
+    if not replicas:
         return None
-    max_replicas = df["replicas"].max()
-    avg_replicas = df["replicas"].mean()
+    max_replicas = max(replicas)
+    avg_replicas = sum(replicas) / len(replicas)
     return {
         "Max Replicas": max_replicas,
         "Avg Replicas": f"{avg_replicas:.1f}"
