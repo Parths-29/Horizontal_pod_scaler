@@ -280,6 +280,110 @@ async def predict(req: PredictRequest) -> PredictResponse:
     )
 
 
+# ── Scaler forecast (real model predictions for KEDA) ─────────────────────────
+
+PROMETHEUS_URL = os.environ.get(
+    "PROMETHEUS_URL",
+    "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090",
+)
+
+
+def _query_prometheus_cpu(minutes: int = 30) -> list[float]:
+    """
+    Query Prometheus for the last *minutes* of per-minute average CPU
+    utilisation (%) across all demo-app pods.
+
+    Returns a list of floats (oldest → newest), one per minute.
+    Falls back to a synthetic baseline if Prometheus is unreachable so
+    the scaler never hard-fails with zero data.
+    """
+    import urllib.request
+    import urllib.parse
+
+    query = (
+        'avg(rate(container_cpu_usage_seconds_total'
+        '{pod=~"demo-app-.*",container!="",container!="POD"}[1m])) * 100'
+    )
+    params = urllib.parse.urlencode({
+        "query": query,
+        "start": f"{int(time.time()) - minutes * 60}",
+        "end": str(int(time.time())),
+        "step": "60",
+    })
+    url = f"{PROMETHEUS_URL}/api/v1/query_range?{params}"
+
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read())
+        results = data.get("data", {}).get("result", [])
+        if results:
+            values = [float(v[1]) for v in results[0]["values"]]
+            if len(values) >= 15:
+                return values
+            logger.warning(f"Prometheus returned only {len(values)} points; padding to 15")
+            return [values[0]] * (15 - len(values)) + values
+    except Exception as exc:
+        logger.warning(f"Prometheus query failed ({exc}); using synthetic fallback")
+
+    # Fallback: generate a gentle sine wave so the model always has input.
+    # This means KEDA can still scale based on time-of-day seasonality even
+    # when Prometheus is temporarily down.
+    t = np.arange(minutes)
+    return list(np.clip(
+        25 + 15 * np.sin(2 * np.pi * (pd.Timestamp.utcnow().hour + t / 60) / 24),
+        0, 100,
+    ).astype(float))
+
+
+@app.get("/api/scaler/forecast")
+async def scaler_forecast(horizon_minutes: int = 5):
+    """
+    Real ML prediction endpoint consumed by the KEDA external gRPC scaler.
+
+    1. Fetches the last 30 min of demo-app CPU from Prometheus.
+    2. For each minute in [now+1 … now+horizon_minutes], builds features
+       from the recent CPU window and runs the trained model.
+    3. Returns ``{"predictions": [{"cpu_util": float, "timestamp": str}, …]}``.
+
+    The scaler reads ``max(predictions[*].cpu_util)`` and reports it to KEDA
+    as the current metric value. KEDA compares this against targetCpuUtil
+    (default 70) and decides whether to scale.
+    """
+    if _model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded yet")
+
+    recent = _query_prometheus_cpu(minutes=30)
+    model_type = _model_meta.get("model_type", "unknown")
+    now = pd.Timestamp.utcnow()
+    predictions = []
+
+    for step in range(1, horizon_minutes + 1):
+        future_dt = now + pd.Timedelta(minutes=step)
+
+        if model_type == "Prophet":
+            future_df = pd.DataFrame({"ds": [future_dt]})
+            forecast = _model.predict(future_df)
+            pred = float(np.clip(forecast["yhat"].iloc[0], 0, 100))
+        else:
+            features = _build_features_from_recent(recent, step, future_dt)
+            pred = float(np.clip(_model.predict(features)[0], 0, 100))
+
+        predictions.append({
+            "cpu_util": round(pred, 2),
+            "timestamp": future_dt.isoformat(),
+        })
+
+        # Slide the window forward with the predicted value so that lag
+        # features stay coherent for multi-step forecasts.
+        recent.append(pred)
+
+    logger.info(
+        f"Scaler forecast ({model_type}, {horizon_minutes}min): "
+        f"peak={max(p['cpu_util'] for p in predictions):.1f}%"
+    )
+    return {"predictions": predictions}
+
+
 # ── Forecast time series (for frontend chart) ─────────────────────────────────
 
 @app.get("/api/forecast")

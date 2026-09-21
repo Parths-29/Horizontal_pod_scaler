@@ -25,7 +25,7 @@ class ExternalScaler(pb_grpc.ExternalScalerServicer):
         """Fetch the predicted load from the FastAPI backend."""
         try:
             # We fetch a 5-minute forecast
-            response = requests.get(f"{self.backend_url}/api/forecast", params={"horizon_minutes": 5}, timeout=5)
+            response = requests.get(f"{self.backend_url}/api/scaler/forecast", params={"horizon_minutes": 5}, timeout=5)
             response.raise_for_status()
             data = response.json()
             predictions = data.get("predictions", [])

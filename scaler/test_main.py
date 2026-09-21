@@ -19,15 +19,20 @@ def test_get_forecast_success(scaler):
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "predictions": [
-                {"cpu_util": 10.5},
-                {"cpu_util": 15.0},
-                {"cpu_util": 12.0}
+                {"cpu_util": 10.5, "timestamp": "2026-01-01T00:01:00"},
+                {"cpu_util": 15.0, "timestamp": "2026-01-01T00:02:00"},
+                {"cpu_util": 12.0, "timestamp": "2026-01-01T00:03:00"}
             ]
         }
         mock_get.return_value = mock_response
         
         result = scaler._get_forecast("demo-app")
         assert result == 15.0  # Peak
+        mock_get.assert_called_once_with(
+            "http://fake-backend:8000/api/scaler/forecast",
+            params={"horizon_minutes": 5},
+            timeout=5,
+        )
 
 def test_get_forecast_empty(scaler):
     """Test _get_forecast handles empty predictions."""
