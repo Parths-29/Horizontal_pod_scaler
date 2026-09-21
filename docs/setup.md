@@ -121,6 +121,9 @@ docker push $ECR_URL/backend:latest
 ## Step 6 — Deploy to EKS
 
 ```bash
+# Install metrics-server (required for standard CPU HPA)
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
 # Install KEDA
 helm repo add kedacore https://kedacore.github.io/charts
 helm install keda kedacore/keda --namespace keda-system --create-namespace

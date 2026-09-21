@@ -17,16 +17,7 @@ AUTOSCALERS = ["hpa", "keda"]
 def parse_k6_json(filepath: Path):
     """
     K6 json output has one JSON object per line.
-    We need to extract the final summary metrics.
-    Actually, `k6 run --out json=...` dumps every single metric data point.
-    A simpler way is to just grep the final summary or parse the metrics at the end.
-    But since k6 dumps point-by-point, we can aggregate.
-    Actually, k6 writes a 'Metric' type line and 'Point' type lines.
-    To avoid huge memory usage parsing raw k6 JSON, let's just parse the 
-    aggregate metrics if we use a different k6 plugin, OR we can just read the 
-    points and compute P95 ourselves.
-    
-    For simplicity, let's read the JSON file line by line and aggregate `http_req_duration` and `http_reqs`.
+    Extracts total requests, failed requests, and computes latency percentiles.
     """
     if not filepath.exists():
         return None
@@ -35,34 +26,41 @@ def parse_k6_json(filepath: Path):
     failed_reqs = 0
     durations = []
 
-    with open(filepath, 'r') as f:
+    with open(filepath, 'r', encoding='utf-8') as f:
         for line in f:
             try:
                 data = json.loads(line)
-                if data["type"] == "Point":
-                    metric = data["metric"]
+                if data.get("type") == "Point":
+                    metric = data.get("metric")
                     if metric == "http_reqs":
                         reqs += data["data"]["value"]
                     elif metric == "http_req_failed":
                         failed_reqs += data["data"]["value"]
                     elif metric == "http_req_duration":
                         durations.append(data["data"]["value"])
-            except:
+            except Exception:
                 pass
 
     durations.sort()
     count = len(durations)
-    
-    p50 = durations[int(count * 0.50)] if count > 0 else 0
-    p95 = durations[int(count * 0.95)] if count > 0 else 0
-    p99 = durations[int(count * 0.99)] if count > 0 else 0
+
+    if count > 0:
+        p50 = f"{durations[int(count * 0.50)]:.2f}"
+        p95 = f"{durations[int(count * 0.95)]:.2f}"
+        p99 = f"{durations[int(count * 0.99)]:.2f}"
+    else:
+        p50 = "N/A"
+        p95 = "N/A"
+        p99 = "N/A"
+
+    failure_pct = f"{(failed_reqs / reqs * 100):.1f}%" if reqs > 0 else "0.0%"
 
     return {
         "Total Requests": reqs,
-        "Failed Requests": failed_reqs,
-        "P50 Latency (ms)": f"{p50:.2f}",
-        "P95 Latency (ms)": f"{p95:.2f}",
-        "P99 Latency (ms)": f"{p99:.2f}",
+        "Failed Requests": f"{int(failed_reqs)} ({failure_pct})",
+        "P50 Latency (ms)": p50,
+        "P95 Latency (ms)": p95,
+        "P99 Latency (ms)": p99,
     }
 
 def analyze_replicas(filepath: Path):
@@ -116,7 +114,6 @@ def main():
             
             # Format row
             if m == "Failed Requests":
-                # Highlight if KEDA had fewer dropped requests
                 md_content += f"| **{m}** | {h_val} | **{k_val}** |\n"
             elif m == "P95 Latency (ms)":
                 md_content += f"| {m} | {h_val} | **{k_val}** |\n"
@@ -126,7 +123,7 @@ def main():
         md_content += "\n"
 
     report_path = DOCS_DIR / "benchmark-results.md"
-    with open(report_path, "w") as f:
+    with open(report_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 
     print(f"✅ Generated {report_path}")
